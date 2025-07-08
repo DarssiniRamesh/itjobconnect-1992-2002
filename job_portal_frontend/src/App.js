@@ -9,6 +9,7 @@ import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
 import SeekerDashboard from './pages/SeekerDashboard';
 import EmployerDashboard from './pages/EmployerDashboard';
+import { PrivateRoute, RoleGuard } from "./context/RouteGuards";
 
 /**
  * PUBLIC_INTERFACE
@@ -38,10 +39,26 @@ function App() {
             <Route path="/jobs" element={<JobsPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
-            {/* Auth routes to adapt when logic added */}
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/dashboard/seeker" element={<SeekerDashboard />} />
-            <Route path="/dashboard/employer" element={<EmployerDashboard />} />
+            <Route
+              path="/profile"
+              element={<PrivateRoute><ProfilePage /></PrivateRoute>}
+            />
+            <Route
+              path="/dashboard/seeker"
+              element={
+                <RoleGuard allowedRoles={["seeker"]}>
+                  <SeekerDashboard />
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="/dashboard/employer"
+              element={
+                <RoleGuard allowedRoles={["employer"]}>
+                  <EmployerDashboard />
+                </RoleGuard>
+              }
+            />
             {/* Catchall: redirect to home */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
