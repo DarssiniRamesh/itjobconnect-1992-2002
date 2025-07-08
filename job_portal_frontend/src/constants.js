@@ -1,4 +1,4 @@
-export const API_BASE_URL = "http://localhost:3001"; // FastAPI backend base URL
+export const API_BASE_URL = "https://vscode-internal-8-beta.beta01.cloud.kavia.ai:3001"; // FastAPI backend base URL
 
 // API Endpoints mapped to backend spec
 export const API_ENDPOINTS = {
