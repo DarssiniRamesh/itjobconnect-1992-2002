@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { API_BASE_URL, API_ENDPOINTS } from "../constants";
 
 /**
  * PUBLIC_INTERFACE
@@ -23,13 +24,13 @@ function EmployerDashboard() {
     async function fetchJobs() {
       if (!isAuthenticated) return;
       setLoading(true);
-      const res = await fetch("/api/employer/jobs", {
+      const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.EMPLOYER_JOBS}`, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         }
       });
       const data = await res.json();
-      setMyJobs(data.jobs || []);
+      setMyJobs(Array.isArray(data) ? data : data.jobs || []);
       setLoading(false);
     }
     fetchJobs();
@@ -56,7 +57,9 @@ function EmployerDashboard() {
     setFormError("");
     setFormLoading(true);
 
-    const url = editJob ? `/api/jobs/${editJob.id}` : "/api/jobs";
+    const url = editJob
+      ? `${API_BASE_URL}${API_ENDPOINTS.JOB_DETAIL(editJob.id)}`
+      : `${API_BASE_URL}${API_ENDPOINTS.JOBS}`;
     const method = editJob ? "PUT" : "POST";
     const res = await fetch(url, {
       method,
@@ -70,15 +73,15 @@ function EmployerDashboard() {
     if (res.ok) {
       setShowJobForm(false);
       // Refresh jobs
-      const res2 = await fetch("/api/employer/jobs", {
+      const res2 = await fetch(`${API_BASE_URL}${API_ENDPOINTS.EMPLOYER_JOBS}`, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         }
       });
       const data2 = await res2.json();
-      setMyJobs(data2.jobs || []);
+      setMyJobs(Array.isArray(data2) ? data2 : data2.jobs || []);
     } else {
-      setFormError(data?.message || "Could not save job");
+      setFormError(data?.detail || data?.message || "Could not save job");
     }
     setFormLoading(false);
   }
@@ -149,13 +152,13 @@ function EmployerDashboard() {
   async function handleShowApplicants(jobId) {
     setShowApplicantsFor(jobId);
     setApplicantsLoading(true);
-    const res = await fetch(`/api/jobs/${jobId}/applicants`, {
+    const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.JOB_APPLICATIONS(jobId)}`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
     });
     const data = await res.json();
-    setApplicants(data.applicants || []);
+    setApplicants(Array.isArray(data) ? data : data.applicants || []);
     setApplicantsLoading(false);
   }
 

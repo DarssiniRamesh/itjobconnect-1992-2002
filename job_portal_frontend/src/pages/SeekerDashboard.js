@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { API_BASE_URL, API_ENDPOINTS } from "../constants";
 
 /**
  * PUBLIC_INTERFACE
@@ -14,13 +15,13 @@ function SeekerDashboard() {
     async function fetchApplications() {
       if (!isAuthenticated) return;
       setLoading(true);
-      const res = await fetch("/api/applications/mine", {
+      const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.APPLICANT_APPLICATIONS}`, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         }
       });
       const data = await res.json();
-      setApplications(data.applications || []);
+      setApplications(Array.isArray(data) ? data : data.applications || []);
       setLoading(false);
     }
     fetchApplications();

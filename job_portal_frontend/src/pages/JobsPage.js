@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { API_BASE_URL, API_ENDPOINTS } from "../constants";
 
 /**
  * PUBLIC_INTERFACE
@@ -18,18 +19,14 @@ function JobsPage() {
   useEffect(() => {
     async function fetchJobs() {
       setLoading(true);
-      let url = "/api/jobs";
-      let sep = "?";
-      if (search) {
-        url += `${sep}search=${encodeURIComponent(search)}`;
-        sep = "&";
-      }
-      if (location) {
-        url += `${sep}location=${encodeURIComponent(location)}`;
-      }
+      let url = `${API_BASE_URL}${API_ENDPOINTS.JOBS}`;
+      const params = [];
+      if (search) params.push(`query=${encodeURIComponent(search)}`);
+      if (location) params.push(`location=${encodeURIComponent(location)}`);
+      if (params.length > 0) url += "?" + params.join("&");
       const res = await fetch(url);
       const data = await res.json();
-      setJobs(data.jobs || []);
+      setJobs(Array.isArray(data) ? data : data.jobs || []);
       setLoading(false);
     }
     fetchJobs();
@@ -42,20 +39,21 @@ function JobsPage() {
       return;
     }
     setApplyStatus({ sending: true });
-    const res = await fetch(`/api/jobs/${jobId}/apply`, {
+    const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.JOB_APPLY(jobId)}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ application_answers: answers }),
+      // FastAPI expects {cover_letter}, adapt accordingly if frontend supports more info
+      body: JSON.stringify({ cover_letter: answers }),
     });
     const data = await res.json();
     if (res.ok) {
-      setApplyStatus({ success: data.message || "Application sent!" });
+      setApplyStatus({ success: "Application sent!" });
       setSelectedJob(null);
     } else {
-      setApplyStatus({ error: data?.message || "Could not apply." });
+      setApplyStatus({ error: data?.detail || data?.message || "Could not apply." });
     }
   };
 

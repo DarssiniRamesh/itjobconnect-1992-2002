@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-
+import { API_BASE_URL, API_ENDPOINTS } from "../constants";
 // AuthContext to provide authentication state and actions throughout the app
 const AuthContext = createContext(null);
 
@@ -35,22 +35,42 @@ export function AuthProvider({ children }) {
   // PUBLIC_INTERFACE
   const login = async ({ email, password }) => {
     setLoading(true);
-    // TODO: Replace with actual backend URL
-    const res = await fetch("/api/auth/login", {
+    // The FastAPI backend expects x-www-form-urlencoded for login
+    const params = new URLSearchParams();
+    params.append("username", email);
+    params.append("password", password);
+
+    const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.LOGIN}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params,
     });
     const data = await res.json();
-    if (res.ok && data.token && data.user) {
-      setToken(data.token);
-      setUser(data.user);
-      setRole(data.user.role);
-      localStorage.setItem("jwt", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      localStorage.setItem("role", data.user.role);
+
+    if (res.ok && data.access_token) {
+      // Get user info from /auth/me to fetch profile & role after login
+      const meRes = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PROFILE}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${data.access_token}`,
+          "Content-Type": "application/json"
+        }
+      });
+      if (meRes.ok) {
+        const userInfo = await meRes.json();
+        // For both applicant and employer, backend profile includes "role" ("applicant"/"employer" or "seeker"/"employer")
+        const userRole = userInfo.company_name !== undefined ? "employer" : "seeker";
+        setToken(data.access_token);
+        setUser(userInfo);
+        setRole(userRole);
+        localStorage.setItem("jwt", data.access_token);
+        localStorage.setItem("user", JSON.stringify(userInfo));
+        localStorage.setItem("role", userRole);
+        setLoading(false);
+        return { success: true };
+      }
       setLoading(false);
-      return { success: true };
+      return { success: false, message: "Could not retrieve user profile" };
     } else {
       setToken(null);
       setUser(null);
@@ -59,29 +79,52 @@ export function AuthProvider({ children }) {
       localStorage.removeItem("user");
       localStorage.removeItem("role");
       setLoading(false);
-      return { success: false, message: data?.message || "Login failed" };
+      return { success: false, message: data?.detail || "Login failed" };
     }
   };
 
   // PUBLIC_INTERFACE
   const signup = async ({ name, email, password, role }) => {
     setLoading(true);
-    // TODO: Replace with actual backend URL
-    const res = await fetch("/api/auth/register", {
+    // endpoint depends on role (applicant | employer)
+    let url;
+    let payload;
+    if (role === "employer") {
+      url = `${API_BASE_URL}${API_ENDPOINTS.REGISTER_EMPLOYER}`;
+      payload = { name, email, password }; // Only "name", "email", "password" are required, company_name, company_website can be added as needed
+    } else {
+      url = `${API_BASE_URL}${API_ENDPOINTS.REGISTER_APPLICANT}`;
+      payload = { name, email, password }; // summary, skills, experience are optional and can be extended from frontend form if desired
+    }
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password, role }),
+      body: JSON.stringify(payload)
     });
     const data = await res.json();
-    if (res.ok && data.token && data.user) {
-      setToken(data.token);
-      setUser(data.user);
-      setRole(data.user.role);
-      localStorage.setItem("jwt", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      localStorage.setItem("role", data.user.role);
+    if (res.ok && data.access_token) {
+      // Fetch user info as with login
+      const meRes = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PROFILE}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${data.access_token}`,
+          "Content-Type": "application/json"
+        }
+      });
+      if (meRes.ok) {
+        const userInfo = await meRes.json();
+        const userRole = userInfo.company_name !== undefined ? "employer" : "seeker";
+        setToken(data.access_token);
+        setUser(userInfo);
+        setRole(userRole);
+        localStorage.setItem("jwt", data.access_token);
+        localStorage.setItem("user", JSON.stringify(userInfo));
+        localStorage.setItem("role", userRole);
+        setLoading(false);
+        return { success: true };
+      }
       setLoading(false);
-      return { success: true };
+      return { success: false, message: "Could not fetch user profile after registration." };
     } else {
       setToken(null);
       setUser(null);
@@ -90,7 +133,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem("user");
       localStorage.removeItem("role");
       setLoading(false);
-      return { success: false, message: data?.message || "Registration failed" };
+      return { success: false, message: data?.detail || "Registration failed" };
     }
   };
 
