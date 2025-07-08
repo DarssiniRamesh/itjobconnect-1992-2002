@@ -24,16 +24,29 @@ function JobsPage() {
       if (search) params.push(`query=${encodeURIComponent(search)}`);
       if (location) params.push(`location=${encodeURIComponent(location)}`);
       if (params.length > 0) url += "?" + params.join("&");
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
+      // The backend returns an array of JobRead or {"jobs": [...]}
       const data = await res.json();
-      setJobs(Array.isArray(data) ? data : data.jobs || []);
+      // Per spec, should be array; fallback if not
+      let jobsArr = [];
+      if (Array.isArray(data)) {
+        jobsArr = data;
+      } else if (Array.isArray(data.jobs)) {
+        jobsArr = data.jobs;
+      } else if (Array.isArray(data.results)) {
+        jobsArr = data.results;
+      }
+      setJobs(jobsArr);
       setLoading(false);
     }
     fetchJobs();
   }, [search, location]);
 
   // PUBLIC_INTERFACE
-  const handleApply = async (jobId, answers = null) => {
+  const handleApply = async (jobId, coverLetter = null) => {
     if (!isAuthenticated || role !== "seeker") {
       setApplyStatus({ error: "You must be logged in as a job seeker to apply." });
       return;
@@ -45,14 +58,15 @@ function JobsPage() {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      // FastAPI expects {cover_letter}, adapt accordingly if frontend supports more info
-      body: JSON.stringify({ cover_letter: answers }),
+      // Backend expects: {cover_letter: string|null}
+      body: JSON.stringify({ cover_letter: coverLetter }),
     });
     const data = await res.json();
     if (res.ok) {
       setApplyStatus({ success: "Application sent!" });
       setSelectedJob(null);
     } else {
+      // "detail" (FastAPI) or "message"
       setApplyStatus({ error: data?.detail || data?.message || "Could not apply." });
     }
   };
@@ -71,8 +85,8 @@ function JobsPage() {
           <h3 style={{ margin: "0 0 8px 0" }}>{selectedJob.title}</h3>
           <span style={{ fontSize: 13, color: "#6a6" }}>{selectedJob.location}</span>
           <div style={{ margin: "1rem 0" }}>
-            <strong>Company:</strong> {selectedJob.company} <br />
-            <strong>Salary:</strong> {selectedJob.salary ?? "Negotiable"}
+            <strong>Employer:</strong> {selectedJob.employer_name || "--"} <br />
+            <strong>Type:</strong> {selectedJob.job_type || "--"}
           </div>
           <div style={{ margin: "1rem 0", color: "#444" }}>{selectedJob.description}</div>
           {role === "seeker" ?
@@ -86,6 +100,9 @@ function JobsPage() {
               {isAuthenticated ? "Employers cannot apply." : "Login as a seeker to apply."}
             </span>
           }
+          <div style={{fontSize: 12, color: "#888", marginTop: 7}}>
+            Posted: {selectedJob.posted_at ? new Date(selectedJob.posted_at).toLocaleDateString() : "N/A"}
+          </div>
           <button
             className="btn"
             style={{ marginTop: 12, width: "100%", background: "#ddd", color: "#222" }}

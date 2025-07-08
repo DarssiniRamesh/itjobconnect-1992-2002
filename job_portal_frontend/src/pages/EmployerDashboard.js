@@ -12,7 +12,7 @@ function EmployerDashboard() {
   const [loading, setLoading] = useState(true);
   const [showJobForm, setShowJobForm] = useState(false);
   const [editJob, setEditJob] = useState(null);
-  const [jobForm, setJobForm] = useState({ title: "", location: "", salary: "", description: "" });
+  const [jobForm, setJobForm] = useState({ title: "", description: "", location: "", job_type: "", keywords: "" });
   const [formError, setFormError] = useState("");
   const [formLoading, setFormLoading] = useState(false);
   const [showApplicantsFor, setShowApplicantsFor] = useState(null);
@@ -40,10 +40,11 @@ function EmployerDashboard() {
     setEditJob(job);
     setJobForm(job ? {
       title: job.title || "",
-      location: job.location || "",
-      salary: job.salary || "",
       description: job.description || "",
-    } : { title: "", location: "", salary: "", description: "" });
+      location: job.location || "",
+      job_type: job.job_type || "",
+      keywords: job.keywords || ""
+    } : { title: "", description: "", location: "", job_type: "", keywords: "" });
     setFormError("");
     setShowJobForm(true);
   }
@@ -61,13 +62,27 @@ function EmployerDashboard() {
       ? `${API_BASE_URL}${API_ENDPOINTS.JOB_DETAIL(editJob.id)}`
       : `${API_BASE_URL}${API_ENDPOINTS.JOBS}`;
     const method = editJob ? "PUT" : "POST";
+    // Backend expects required: title, description. Optional: location, job_type, keywords.
+    let payload;
+    if (editJob) {
+      // Only include fields that are provided for JobUpdate schema (all optional).
+      payload = {};
+      ["title", "description", "location", "job_type", "keywords"].forEach(k => {
+        if (jobForm[k] !== undefined && jobForm[k] !== "") payload[k] = jobForm[k];
+      });
+    } else {
+      payload = { title: jobForm.title, description: jobForm.description };
+      if (jobForm.location) payload.location = jobForm.location;
+      if (jobForm.job_type) payload.job_type = jobForm.job_type;
+      if (jobForm.keywords) payload.keywords = jobForm.keywords;
+    }
     const res = await fetch(url, {
       method,
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify(jobForm)
+      body: JSON.stringify(payload)
     });
     const data = await res.json();
     if (res.ok) {
@@ -111,18 +126,26 @@ function EmployerDashboard() {
               />
             </div>
             <div style={{ marginBottom: 14 }}>
-              <input type="text" className="App-input" name="location" required
-                placeholder="Location"
+              <input type="text" className="App-input" name="location"
+                placeholder="Location (optional)"
                 style={{ width: "100%" }}
                 value={jobForm.location}
                 onChange={handleFormChange}
               />
             </div>
             <div style={{ marginBottom: 14 }}>
-              <input type="text" className="App-input" name="salary"
-                placeholder="Salary (optional)"
+              <input type="text" className="App-input" name="job_type"
+                placeholder="Job Type (e.g. Full Time, Remote)"
                 style={{ width: "100%" }}
-                value={jobForm.salary}
+                value={jobForm.job_type}
+                onChange={handleFormChange}
+              />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <input type="text" className="App-input" name="keywords"
+                placeholder="Keywords (comma-separated)"
+                style={{ width: "100%" }}
+                value={jobForm.keywords}
                 onChange={handleFormChange}
               />
             </div>
@@ -228,6 +251,8 @@ function EmployerDashboard() {
                 <tr>
                   <th style={thStyle}>Title</th>
                   <th style={thStyle}>Location</th>
+                  <th style={thStyle}>Type</th>
+                  <th style={thStyle}>Posted</th>
                   <th style={thStyle}>Applicants</th>
                   <th style={thStyle}>Actions</th>
                 </tr>
@@ -236,7 +261,9 @@ function EmployerDashboard() {
                 {myJobs.map(job => (
                   <tr key={job.id}>
                     <td style={tdStyle}>{job.title}</td>
-                    <td style={tdStyle}>{job.location}</td>
+                    <td style={tdStyle}>{job.location || "--"}</td>
+                    <td style={tdStyle}>{job.job_type || "--"}</td>
+                    <td style={tdStyle}>{job.posted_at ? new Date(job.posted_at).toLocaleDateString() : "--"}</td>
                     <td style={tdStyle + { textAlign: "center" }}>
                       <button className="btn"
                         onClick={() => handleShowApplicants(job.id)}
