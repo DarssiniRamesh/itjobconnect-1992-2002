@@ -1,8 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import logo from './logo.svg';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
+import Navbar from './components/Navbar';
+import HomePage from './pages/HomePage';
+import JobsPage from './pages/JobsPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ProfilePage from './pages/ProfilePage';
+import SeekerDashboard from './pages/SeekerDashboard';
+import EmployerDashboard from './pages/EmployerDashboard';
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ * Main App component for Job Portal.
+ * Handles theming and exposes main routing/layout.
+ */
 function App() {
   const [theme, setTheme] = useState('light');
 
@@ -17,32 +29,25 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-        </button>
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <p>
-          Current theme: <strong>{theme}</strong>
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <div className="App">
+        <Navbar theme={theme} toggleTheme={toggleTheme} />
+        <main style={{ flex: 1 }}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/jobs" element={<JobsPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            {/* Auth routes to adapt when logic added */}
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/dashboard/seeker" element={<SeekerDashboard />} />
+            <Route path="/dashboard/employer" element={<EmployerDashboard />} />
+            {/* Catchall: redirect to home */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 }
 
